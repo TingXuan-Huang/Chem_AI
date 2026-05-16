@@ -1,0 +1,72 @@
+system: DAC
+
+# ----- Builder ------------------------------------------------------------
+# PACKMOL composition + element-based type mapping. Edit counts and box
+# size for your target density. Templates referenced here must live under
+# templates/molecules/{name}.pdb (see templates/molecules/README.md for
+# SMILES recipes via scripts/build_molecule.py).
+build:
+  composition:
+    - { name: Li,        count: 30 }
+    - { name: PF6,       count: 30 }
+    - { name: DME,       count: 100 }
+    - { name: PDOL_5mer, count: 20 }
+    - { name: DAC_unit,  count: 50 }
+  box_A: [40.0, 40.0, 40.0]
+  type_mapping:
+    - { type: 1, element: H  }
+    - { type: 2, element: C  }
+    - { type: 3, element: N  }
+    - { type: 4, element: O  }
+    - { type: 5, element: F  }
+    - { type: 6, element: P  }
+    - { type: 7, element: S  }
+    - { type: 8, element: Li }
+  output:
+    data: data/raw_trajectories/DAC/system.data
+
+# ----- MLIPs --------------------------------------------------------------
+mlip_dpa2:
+  model: models/dpa2.pb
+  output:
+    traj: data/raw_trajectories/DAC/dpa2_traj.lammpstrj
+    data: data/raw_trajectories/DAC/dpa2_final.data
+
+mlip_uma:
+  size: small
+  output:
+    traj: data/raw_trajectories/DAC/uma_traj.dcd
+
+# ----- MD schedule --------------------------------------------------------
+# DPA-2 runs LAMMPS in metal units (dt in ps); UMA runs ASE (dt in fs).
+md:
+  temp: 300.0
+  dt_ps: 0.0005          # 0.5 fs for LAMMPS+DPA-2
+  dt_fs: 0.5             # 0.5 fs for ASE+UMA
+  equil_steps: 20000       # 10 ps
+  prod_steps_dpa2: 200000  # 100 ps; scale up for real D_Li
+  prod_steps_uma:  20000   # 10 ps cross-check
+  dump_every: 200          # 0.1 ps stride
+
+# ----- Analysis (Layer B) -------------------------------------------------
+# Type-based selections — the MLIP-system data file has no residue names.
+top:  data/raw_trajectories/DAC/system.data
+traj: data/raw_trajectories/DAC/dpa2_traj.lammpstrj
+out:  results/DAC
+
+selections:
+  li:     "type 8"
+  o_cell: "type 4"           # all oxygens (DAC + PDOL + DME)
+  o_poly: ""                 # MLIP typing can't separate polymer oxygens
+  n_poly: ""                 # no nitrogen in DAC scaffold
+  anion:  "type 6"           # P of PF6
+
+fit:
+  tmin_ps: 50
+  tmax_ps: 80
+
+cluster_cut_A: 4.0
+disp_lag_ps:   5.0
+rdf_rmax_A:    10.0
+residence_grid: true
+unwrap: false
