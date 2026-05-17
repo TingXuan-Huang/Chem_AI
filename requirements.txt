@@ -1,0 +1,15 @@
+# Analysis layer (Layer B) — pure Python, pip-installable
+MDAnalysis>=2.7
+tidynamics>=1.1   # FFT-based MSD backend used by MDAnalysis.analysis.msd
+numpy>=1.24
+scipy>=1.10
+pandas>=2.0
+matplotlib>=3.7
+PyYAML>=6.0
+
+# Layer A (LAMMPS Python API + GPU package) is NOT installed via pip.
+# Install LAMMPS with the Python module and GPU package via, e.g.:
+#   conda install -c conda-forge lammps          # CPU build
+#   # or build from source with -DPKG_GPU=on -DGPU_API=cuda
+#   #                              -DBUILD_SHARED_LIBS=on -DPKG_PYTHON=on
+# See README.md for details.

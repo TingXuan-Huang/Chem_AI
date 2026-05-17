@@ -1,0 +1,29 @@
+# MLIP pipeline dependencies (heavy — keep separate from requirements.txt).
+# Install on the GPU server alongside requirements.txt:
+#     pip install -r requirements.txt -r requirements-mlip.txt
+
+# DeepMD-kit. The pure-Python wheel is enough for offline inference and for
+# `validate_mlip.py`. For LAMMPS-driven MLIP-MD (`lammps_mlip_run.py`) you need
+# the LAMMPS plugin, which is easiest via conda:
+#     conda install -c deepmodeling deepmd-kit lammps
+# (the `lammps` conda package ships with `pair_style deepmd` enabled).
+deepmd-kit>=2.2
+
+# Meta UMA via fairchem.
+fairchem-core>=1.0
+torch>=2.2
+
+# Atomic Simulation Environment — used for ASE-based UMA MD and for converting
+# packed PDBs to LAMMPS data files.
+ase>=3.23
+
+# RDKit — SMILES -> PDB for molecular templates.
+rdkit>=2023.9
+
+# PACKMOL is a binary, NOT a pip package. Install separately:
+#     conda install -c conda-forge packmol
+# or build from https://m3g.github.io/packmol/. The pipeline calls `packmol`
+# via subprocess.
+
+# pytest for the test suite.
+pytest>=8.0

@@ -1,0 +1,63 @@
+system: CgPEI
+
+build:
+  composition:
+    - { name: Li,        count: 30 }
+    - { name: PF6,       count: 30 }
+    - { name: DME,       count: 100 }
+    - { name: PDOL_5mer, count: 20 }
+    - { name: DAC_unit,  count: 30 }
+    - { name: PEI_4mer,  count: 20 }
+  box_A: [42.0, 42.0, 42.0]
+  type_mapping:
+    - { type: 1, element: H  }
+    - { type: 2, element: C  }
+    - { type: 3, element: N  }
+    - { type: 4, element: O  }
+    - { type: 5, element: F  }
+    - { type: 6, element: P  }
+    - { type: 7, element: S  }
+    - { type: 8, element: Li }
+  output:
+    data: data/raw_trajectories/CgPEI/system.data
+
+mlip_dpa2:
+  model: models/dpa2.pb
+  output:
+    traj: data/raw_trajectories/CgPEI/dpa2_traj.lammpstrj
+    data: data/raw_trajectories/CgPEI/dpa2_final.data
+
+mlip_uma:
+  size: small
+  output:
+    traj: data/raw_trajectories/CgPEI/uma_traj.dcd
+
+md:
+  temp: 300.0
+  dt_ps: 0.0005
+  dt_fs: 0.5
+  equil_steps: 20000
+  prod_steps_dpa2: 200000
+  prod_steps_uma:  20000
+  dump_every: 200
+
+top:  data/raw_trajectories/CgPEI/system.data
+traj: data/raw_trajectories/CgPEI/dpa2_traj.lammpstrj
+out:  results/CgPEI
+
+selections:
+  li:     "type 8"
+  o_cell: "type 4"           # all oxygens
+  o_poly: ""
+  n_poly: "type 3"           # N from PEI grafts
+  anion:  "type 6"           # P of PF6
+
+fit:
+  tmin_ps: 50
+  tmax_ps: 80
+
+cluster_cut_A: 4.0
+disp_lag_ps:   5.0
+rdf_rmax_A:    10.0
+residence_grid: true
+unwrap: false
