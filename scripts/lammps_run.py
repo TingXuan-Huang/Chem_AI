@@ -30,6 +30,58 @@ def _exec(lmp, line: str) -> None:
         lmp.command(line)
 
 
+def build_commands(args: argparse.Namespace) -> list[str]:
+    """Construct the LAMMPS command list. Pure function; no side effects."""
+    commands = [
+        "units real",
+        "atom_style full",
+        "boundary p p p",
+    ]
+
+    if args.gpu:
+        # LAMMPS requires package/suffix setup before atoms are created.
+        commands.extend([
+            f"package gpu {args.gpu_n} neigh yes",
+            "suffix gpu",
+        ])
+
+    commands.extend(f"include {path}" for path in args.pre_include)
+    commands.append(f"read_data {args.data}")
+    commands.extend(f"include {path}" for path in args.post_include)
+
+    commands.extend([
+        "neighbor 2.0 bin",
+        "neigh_modify every 1 delay 0 check yes",
+        f"velocity all create {args.temp} {args.seed} rot yes dist gaussian",
+        "minimize 1.0e-4 1.0e-6 1000 10000",
+        f"timestep {args.dt_fs}",
+        f"thermo {args.thermo}",
+        "thermo_style custom step temp press etotal density",
+        f"fix nvt_eq all nvt temp {args.temp} {args.temp} 100.0",
+        f"run {args.equil_steps}",
+        "unfix nvt_eq",
+    ])
+
+    if args.npt_steps > 0:
+        commands.extend([
+            f"fix npt_eq all npt temp {args.temp} {args.temp} 100.0 "
+            f"iso {args.pressure} {args.pressure} 1000.0",
+            f"run {args.npt_steps}",
+            "unfix npt_eq",
+        ])
+
+    commands.extend([
+        f"fix nvt_prod all nvt temp {args.temp} {args.temp} 100.0",
+        f"dump traj all custom {args.dump_every} {args.out_traj} id type xu yu zu",
+        "dump_modify traj sort id",
+        f"run {args.prod_steps}",
+        "undump traj",
+        "unfix nvt_prod",
+        f"write_data {args.out_data}",
+    ])
+    return commands
+
+
 def run(args: argparse.Namespace) -> None:
     try:
         from lammps import lammps
@@ -42,56 +94,8 @@ def run(args: argparse.Namespace) -> None:
         )
 
     lmp = lammps()
-    L = lambda line: _exec(lmp, line)
-
-    L("units real")
-    L("atom_style full")
-    L("boundary p p p")
-
-    if args.gpu:
-        # GPU package: offload pair force evaluation to the GPU.
-        # `suffix gpu` auto-appends /gpu to compatible pair/bond/k-space styles.
-        L(f"package gpu {args.gpu_n} neigh yes")
-        L("suffix gpu")
-
-    for path in args.pre_include:
-        L(f"include {path}")
-
-    L(f"read_data {args.data}")
-
-    for path in args.post_include:
-        L(f"include {path}")
-
-    L("neighbor 2.0 bin")
-    L("neigh_modify every 1 delay 0 check yes")
-
-    L(f"velocity all create {args.temp} {args.seed} rot yes dist gaussian")
-
-    L("minimize 1.0e-4 1.0e-6 1000 10000")
-
-    L(f"timestep {args.dt_fs}")
-    L(f"thermo {args.thermo}")
-    L("thermo_style custom step temp press etotal density")
-
-    L(f"fix nvt_eq all nvt temp {args.temp} {args.temp} 100.0")
-    L(f"run {args.equil_steps}")
-    L("unfix nvt_eq")
-
-    if args.npt_steps > 0:
-        L(f"fix npt_eq all npt temp {args.temp} {args.temp} 100.0 "
-          f"iso {args.pressure} {args.pressure} 1000.0")
-        L(f"run {args.npt_steps}")
-        L("unfix npt_eq")
-
-    L(f"fix nvt_prod all nvt temp {args.temp} {args.temp} 100.0")
-    L(f"dump traj all custom {args.dump_every} {args.out_traj} "
-      f"id type xu yu zu")
-    L("dump_modify traj sort id")
-    L(f"run {args.prod_steps}")
-    L("undump traj")
-    L("unfix nvt_prod")
-
-    L(f"write_data {args.out_data}")
+    for command in build_commands(args):
+        _exec(lmp, command)
 
 
 def build_parser() -> argparse.ArgumentParser:

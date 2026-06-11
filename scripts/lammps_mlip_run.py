@@ -22,13 +22,15 @@ import sys
 
 def build_commands(args: argparse.Namespace) -> list[str]:
     """Construct the LAMMPS command list. Pure function; no side effects."""
+    type_map = (args.type_map or "").strip()
+    pair_coeff = f"pair_coeff * * {type_map}" if type_map else "pair_coeff * *"
     return [
         "units metal",
         "atom_style atomic",
         "boundary p p p",
         f"read_data {args.data}",
         f"pair_style deepmd {args.mlip_model}",
-        "pair_coeff * *",
+        pair_coeff,
         "neighbor 2.0 bin",
         "neigh_modify every 10 delay 0 check yes",
         f"velocity all create {args.temp} {args.seed} rot yes dist gaussian",
@@ -79,6 +81,12 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--dump-every", type=int, default=200)
     ap.add_argument("--thermo", type=int, default=1000)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument(
+        "--type-map", default="",
+        help='Space-separated element list matching LAMMPS atom types 1..N '
+             '(e.g. "H C N O F P S Li").  Appended to `pair_coeff * *` so the '
+             "DeepMD model uses the right species ordering.",
+    )
     return ap
 
 

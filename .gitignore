@@ -16,6 +16,9 @@ models/uma/
 data/raw_trajectories/**/*
 results/**/*
 
+# Hyak local settings (account name, paths)
+hyak/env.sh
+
 # OS / editor
 .DS_Store
 .idea/

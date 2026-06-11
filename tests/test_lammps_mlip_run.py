@@ -47,6 +47,7 @@ def _make_args(**overrides) -> argparse.Namespace:
         temp=300.0, dt_ps=0.0005,
         equil_steps=1000, prod_steps=10_000,
         dump_every=100, thermo=500, seed=7,
+        type_map="",
     )
     base.update(overrides)
     return argparse.Namespace(**base)
@@ -61,7 +62,28 @@ def test_build_commands_uses_metal_units_and_atomic_style():
 def test_build_commands_uses_deepmd_pair_style():
     cmds = build_commands(_make_args(mlip_model="my_model.pb"))
     assert "pair_style deepmd my_model.pb" in cmds
+    # No explicit --type-map -> bare `pair_coeff * *` (model order trusted).
     assert "pair_coeff * *" in cmds
+
+
+def test_build_commands_appends_type_map_to_pair_coeff():
+    """DeepMD docs require an element list on pair_coeff when LAMMPS type
+    order may not match the model's species order.  Passing --type-map
+    'H C N O F P S Li' must produce `pair_coeff * * H C N O F P S Li`.
+    Without this, the model silently uses the wrong species mapping.
+    """
+    cmds = build_commands(_make_args(type_map="H C N O F P S Li"))
+    assert "pair_coeff * * H C N O F P S Li" in cmds
+    assert "pair_coeff * *" not in cmds  # bare form must not also appear
+
+
+def test_parser_accepts_type_map_arg():
+    ap = build_parser()
+    args = ap.parse_args([
+        "--data", "s.data", "--mlip-model", "m.pb",
+        "--type-map", "H O Li",
+    ])
+    assert args.type_map == "H O Li"
 
 
 def test_build_commands_reads_user_data_file():
